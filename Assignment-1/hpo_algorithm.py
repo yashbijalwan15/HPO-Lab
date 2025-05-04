@@ -31,15 +31,15 @@ class HPOAlgorithm:
         pass
     
     @abstractmethod
-    def tell(self, config: Configuration, result: float, budget: int) -> None:
+    def tell(self, config: dict, result: float, budget: int) -> None:
         pass
 
-    def sample(self, size: int | None = None) -> list[Configuration] | Configuration:
+    def sample(self, size: int | None = None) -> list[dict]:
         # TODO: Add config-id to each config to identify and plot later
         return self.cs.sample_configuration(size)
     
-    def grid(self, n_vals: int = 5) -> list[dict]:
-        def _get_param_grid(hp_name: str, n_vals: int = 5) -> tuple:
+    def grid(self, num_steps: int = 5) -> list[dict]:
+        def _get_param_grid(hp_name: str, num_steps: int = 5) -> tuple:
             param = self.cs[hp_name]
             if isinstance(param, (CategoricalHyperparameter)):
                 return tuple(param.choices)
@@ -53,19 +53,19 @@ class HPOAlgorithm:
             elif isinstance(param, UniformFloatHyperparameter):
                 if param.log:
                     lower, upper = np.log([param.lower, param.upper])
-                    pts = np.exp(np.linspace(lower, upper, n_vals))
+                    pts = np.exp(np.linspace(lower, upper, num_steps))
                 else:
                     lower, upper = param.lower, param.upper
-                    pts = np.linspace(lower, upper, n_vals)
+                    pts = np.linspace(lower, upper, num_steps)
                 return tuple(pts)
             
             elif isinstance(param, UniformIntegerHyperparameter):
                 if param.log:
                     lower, upper = np.log([param.lower, param.upper])
-                    pts = np.exp(np.linspace(lower, upper, n_vals))
+                    pts = np.exp(np.linspace(lower, upper, num_steps))
                 else:
                     lower, upper = param.lower, param.upper
-                    pts = np.linspace(lower, upper, n_vals)
+                    pts = np.linspace(lower, upper, num_steps)
                 return tuple(np.round(pts).astype(int))
             
             raise TypeError(f"Unknown hyperparameter type {type(param)}")
@@ -82,7 +82,7 @@ class HPOAlgorithm:
         hp_names = []
 
         for hp_name in self.cs.get_all_unconditional_hyperparameters():
-            param_grid.append(_get_param_grid(hp_name, n_vals))
+            param_grid.append(_get_param_grid(hp_name, num_steps))
             hp_names.append(hp_name)
         
         grid = _get_cartesian_product(param_grid, hp_names)
@@ -120,7 +120,7 @@ class HPOAlgorithm:
                                 new_active_hp_names.append(new_hp_name)
                 
                 for hp_name in new_active_hp_names:
-                    values.append(_get_param_grid(hp_name, n_vals))
+                    values.append(_get_param_grid(hp_name, num_steps))
                     hp_names.append(hp_name)
                 
                 new_grid = _get_cartesian_product(values, hp_names)
