@@ -1,4 +1,4 @@
-from ConfigSpace import Configuration, ConfigurationSpace
+from ConfigSpace import ConfigurationSpace
 from hpo_algorithm import HPOAlgorithm
 
 
@@ -11,10 +11,25 @@ class GridSearch(HPOAlgorithm):
         max_budget: int,
     ) -> None:
         super().__init__(cs, total_budget, min_budget, max_budget)
-        pass
+        
+        n_init = int((total_budget * min_budget) // max_budget)
+        
+        self.configs = self.grid(num_steps=2)
+        print(f"Total Configs: {len(self.configs)}")
+
+        n_init = min(n_init, len(self.configs))
+        self.configs = self.configs[:n_init]
+        print(f"Configs Run: {len(self.configs)}")
+
+        self.evals = []
+        self.idx = 0
     
     def ask(self) -> tuple[dict, float]:
-        pass
+        if len(self.evals) == len(self.configs):
+            return (None, self.max_budget)
+        
+        self.idx += 1
+        return (self.configs[self.idx - 1], self.max_budget)
     
-    def tell(self, config: Configuration, result: float, budget: int) -> None:
-        pass
+    def tell(self, config: dict, result: float, budget: int) -> None:
+        self.evals.append(result)
