@@ -15,8 +15,10 @@ class SuccessiveHalving(HPOAlgorithm):
         super().__init__(cs, total_budget, min_budget, max_budget)
         
         self.eta = eta
-        n_rounds = int(np.log(max_budget / min_budget) / np.log(self.eta)) + 1
-        n_init = int(self.eta ** n_rounds)
+        ratio = max_budget / min_budget
+        n_rounds = int(np.log(ratio) / np.log(self.eta)) + 1
+        # n_init = int(self.eta ** n_rounds)
+        n_init = int(total_budget * (n_rounds / 2 + ratio / 2**n_rounds)**-1)
 
         self.configs = self.sample(n_init)
         self.evals = []
@@ -26,6 +28,8 @@ class SuccessiveHalving(HPOAlgorithm):
     def ask(self) -> tuple[dict, float]:
         if len(self.evals) == len(self.configs):
             if self.curr_budget == self.max_budget:
+                print(f"Iteration {int(np.ceil(np.emath.logn(self.eta, self.max_budget / self.min_budget)) + 1)}:")
+                print(f"Configs: {len(self.configs)}, Budget: {self.max_budget}")
                 return (None, self.max_budget)
             
             print(f"Iteration {int(np.emath.logn(self.eta, self.curr_budget / self.min_budget) + 1)}:")
@@ -39,10 +43,6 @@ class SuccessiveHalving(HPOAlgorithm):
             print(f"Configs left: {len(self.configs)}")
 
             self.idx = 0
-
-            if len(self.configs) == 1:
-                print(f"Iteration {int(np.ceil(np.emath.logn(self.eta, self.max_budget / self.min_budget)) + 1)}:")
-                print(f"Configs: {len(self.configs)}, Budget: {self.max_budget}")
         
         self.idx += 1
         return (self.configs[self.idx - 1], self.curr_budget)
