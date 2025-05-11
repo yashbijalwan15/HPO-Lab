@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from ConfigSpace import Configuration, ConfigurationSpace, util
+from ConfigSpace import Configuration, ConfigurationSpace
 from ConfigSpace.hyperparameters import (
     CategoricalHyperparameter,
     OrdinalHyperparameter,
@@ -9,9 +9,7 @@ from ConfigSpace.hyperparameters import (
 )
 
 import numpy as np
-import random
 import itertools
-from collections import deque
 
 
 class HPOAlgorithm:
@@ -33,8 +31,8 @@ class HPOAlgorithm:
     @abstractmethod
     def tell(self, config: dict, result: float, budget: int) -> None:
         pass
-
-    def sample(self, size: int | None = None) -> list[dict]:
+    
+    def sample(self, size: int | None = None) -> list[dict] | dict:
         # TODO: Add config-id to each config to identify and plot later
         return self.cs.sample_configuration(size)
     
@@ -85,36 +83,34 @@ class HPOAlgorithm:
             param_grid.append(_get_param_grid(hp_name, num_steps))
             hp_names.append(hp_name)
         
-        grid = _get_cartesian_product(param_grid, hp_names)
+        unchecked_grid = _get_cartesian_product(param_grid, hp_names)
 
-        unchecked_grid = deque(grid)
         checked_grid = []
         
-        while len(unchecked_grid) > 0:
+        i = 0
+        while i < len(unchecked_grid):
             try:
-                _ = Configuration(self.cs, unchecked_grid[0])     
-                checked_grid.append(unchecked_grid[0])           
+                _ = Configuration(self.cs, unchecked_grid[i])     
+                checked_grid.append(unchecked_grid[i])           
             
-            except ValueError as e:
-                assert (str(e)[:23] == "Active hyperparameter '" and
-                    str(e)[-16:] == "' not specified!"), \
-                "Caught exception contains unexpected message."
+            except ValueError:
                 values = []
                 hp_names = []
                 new_active_hp_names = []
 
-                for hp_name in unchecked_grid[0]:
-                    values.append((unchecked_grid[0][hp_name],))
+                for hp_name in unchecked_grid[i]:
+                    values.append((unchecked_grid[i][hp_name],))
                     hp_names.append(hp_name)
 
-                    for new_hp_name in self.cs._children[hp_name]:
+                    for new_hp in self.cs.get_children_of(hp_name):
+                        new_hp_name = new_hp.name
                         if (
                             new_hp_name not in new_active_hp_names and
-                            new_hp_name not in unchecked_grid[0]
+                            new_hp_name not in unchecked_grid[i]
                         ):
                             all_cond_ = True
-                            for cond in self.cs._parent_conditions_of[new_hp_name]:
-                                if not cond.evaluate(unchecked_grid[0]):
+                            for cond in self.cs.get_parent_conditions_of(new_hp_name):
+                                if not cond.evaluate(unchecked_grid[i]):
                                     all_cond_ = False
                             if all_cond_:
                                 new_active_hp_names.append(new_hp_name)
@@ -126,6 +122,6 @@ class HPOAlgorithm:
                 new_grid = _get_cartesian_product(values, hp_names)
                 unchecked_grid += new_grid
             
-            unchecked_grid.popleft()
-        
+            i += 1
+
         return checked_grid
