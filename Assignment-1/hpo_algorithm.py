@@ -71,9 +71,74 @@ class HPOAlgorithm:
         
         return True
 
-    def sample(self, size: int | None = None) -> list[dict] | dict:
-        # TODO: Add config-id to each config to identify and plot later
-        return self.cs.sample_configuration(size)
+    def sample(self, size: int = 1) -> list[dict] | dict:
+        rng = np.random.default_rng()
+        hp_names = self.cs.get_hyperparameter_names()
+        iteration = 0
+        missing = size
+        accepted_configurations = []
+        
+        while len(accepted_configurations) < size:
+            for i in range(missing):
+                unsampled_hp = set(hp_names)
+                config = {}
+                progress = True
+                while unsampled_hp and progress:
+                    for hp_name in list(unsampled_hp):
+                        progress = False
+                        param = self.cs[hp_name]
+                        if not self.is_satisfied(hp_name, config):
+                            continue
+                        
+                        if isinstance(param, (CategoricalHyperparameter)):
+                            value = rng.choice(param.choices)
+                        
+                        elif isinstance(param, (OrdinalHyperparameter)):
+                            value = rng.choice(param.sequence)
+                                                
+                        elif isinstance(param, Constant):
+                            value = param.value
+                        
+                        elif isinstance(param, UniformFloatHyperparameter):
+                            if param.log:
+                                u = rng.uniform(np.log(param.lower), np.log(param.upper))
+                                value = float(np.exp(u))
+                            else:
+                                value = float(rng.uniform(param.lower, param.upper))
+                        
+                        elif isinstance(param, UniformIntegerHyperparameter):
+                            if param.log:
+                                u = rng.uniform(np.log(param.lower), np.log(param.upper))
+                                value = int(round(np.exp(u)))
+                            else:
+                                value = rng.integers(param.lower, param.upper + 1)
+                        
+                        else:
+                            raise TypeError(f"Unknown hyperparameter type {type(param)}")
+
+                        config[hp_name] = value
+                        unsampled_hp.remove(hp_name)
+                        progress = True
+                
+                try:
+                    _ = Configuration(self.cs, config)
+                    if config not in accepted_configurations:
+                        accepted_configurations.append(config)
+                
+                except ValueError:
+                    iteration += 1
+
+                    if iteration == size * 100:
+                        raise ValueError(
+                            "Cannot sample valid configuration for "
+                            "%s" % self.cs)
+            
+            missing = size - len(accepted_configurations)
+        
+        if size == 1:
+            return accepted_configurations[0]
+        else:
+            return accepted_configurations
     
     def grid(self, num_steps: int = 5) -> list[dict]:
         def _get_param_grid(hp_name: str, num_steps: int = 5) -> tuple:
