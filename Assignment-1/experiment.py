@@ -1,10 +1,15 @@
+from pathlib import Path
 from random_search import RandomSearch
 from bayesian_optimisation import BayesianOptimisation
 from grid_search import GridSearch
 from successive_halving import SuccessiveHalving
-from yahpo_gym import BenchmarkSet
+from yahpo_gym import BenchmarkSet, local_config
 import pickle
 
+
+parent_path = Path(__file__).parent
+local_config.init_config()
+local_config.set_data_path((parent_path / "data").resolve())
 
 def run(optimiser_class, scenario, instance, fidelity_param, budget, metric):
     """
@@ -14,35 +19,56 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric):
     optimiser (str): The name of the optimiser to use.
     benchmark (str): The name of the benchmark to use.
     """
-    bench = None
+    if optimiser_class == GridSearch and scenario == 'nb301':
+        print("Skipping due to memory issues...")
+        return
 
-    optimiser = None
+    bench = BenchmarkSet(scenario=scenario)
+    bench.set_instance(value=instance)
+    
+    cs = bench.get_opt_space(drop_fidelity_params=True)
+    fidelity = bench.get_fidelity_space()[fidelity_param]
+
+    optimiser = optimiser_class(cs=cs, total_budget=budget, min_budget=fidelity.lower, max_budget=fidelity.upper)
 
     runs = []
     # Run the optimiser on the benchmark
-    cur_budget = 0
-    while cur_budget < budget:
+    curr_budget = 0
+    budget_levels = [curr_budget]
+    while curr_budget < budget:
         # Get the next configuration to evaluate
-        config, budget = optimiser.ask()
+        config, _budget = optimiser.ask()
+        if _budget not in budget_levels:
+            budget_levels.append(_budget)
+        
+        if config is None:
+            print(f"Budget Used: {curr_budget:0.2f} / {budget}")
+            break
 
         # Evaluate the configuration on the benchmark
-        result = None
+        config[fidelity_param] = _budget
+        if scenario == 'rbv2_xgboost': config['repl'] = 6 # default value
+        result = bench.objective_function(config)[0][metric]
 
         # Update the optimiser with the result
-        optimiser.tell(config, result, budget)
-
+        optimiser.tell(config, result, _budget)
+        
         # Increment the budget
-        cur_budget += None
+        curr_budget += (budget_levels[-1] - budget_levels[-2]) / fidelity.lower
         runs.append((config, result))
+    
+    if curr_budget >= budget:
+        print(f"Budget Exceeded: {curr_budget:0.2f} / {budget}")
 
+    print(f"Total Runs: {len(runs)}")
     with open(
-        f"results/{optimiser_class.__name__}_{scenario}_{instance}.pkl", "wb"
+        (parent_path / f"results/{total_budget}/{optimiser_class.__name__}_{scenario}_{instance}.pkl").resolve(), "wb"
     ) as f:
         pickle.dump(runs, f)
 
 
 if __name__ == "__main__":
-    total_budget = None
+    total_budget = 10000
 
     for scenario, instance, fidelity_param, metric in [
         ("nb301", "cifar10", "epoch", "val_accuracy"),
