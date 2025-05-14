@@ -7,9 +7,14 @@ from ConfigSpace.hyperparameters import (
     UniformFloatHyperparameter,
     UniformIntegerHyperparameter,
 )
+from ConfigSpace.conditions import (
+    EqualsCondition,
+    InCondition,
+    GreaterThanCondition,
+    LessThanCondition,
+)
 
 import numpy as np
-import itertools
 
 
 class HPOAlgorithm:
@@ -24,6 +29,11 @@ class HPOAlgorithm:
         self.min_budget: int = min_budget
         self.max_budget: int = max_budget
 
+        conditions = {}
+        for condition in self.cs.get_conditions():
+            conditions.setdefault(condition.child.name, []).append(condition)
+        self.conditions: dict = conditions
+
     @abstractmethod
     def ask(self) -> tuple[dict, float]:
         pass
@@ -32,6 +42,35 @@ class HPOAlgorithm:
     def tell(self, config: dict, result: float, budget: int) -> None:
         pass
     
+    def is_satisfied(self, hp_name: str, config: dict) -> bool:
+        for condition in self.conditions.get(hp_name, []):
+            parent_value = config.get(condition.parent.name)
+
+            if isinstance(condition, EqualsCondition):
+                if parent_value != condition.value:
+                    return False
+            
+            elif isinstance(condition, InCondition):
+                if parent_value not in condition.values:
+                    return False
+            
+            elif isinstance(condition, LessThanCondition):
+                if parent_value is None or parent_value >= condition.value:
+                    return False
+            
+            elif isinstance(condition, GreaterThanCondition):
+                if parent_value is None or parent_value <= condition.value:
+                    return False
+            
+            else:
+                try:
+                    if not condition.evaluate(config):
+                        return False
+                except:
+                    continue
+        
+        return True
+
     def sample(self, size: int | None = None) -> list[dict] | dict:
         # TODO: Add config-id to each config to identify and plot later
         return self.cs.sample_configuration(size)
@@ -67,61 +106,35 @@ class HPOAlgorithm:
                 return tuple(np.round(pts).astype(int))
             
             raise TypeError(f"Unknown hyperparameter type {type(param)}")
-
+        
         def _get_cartesian_product(param_grid: list[tuple], hp_names: list[str]) -> list[dict]:
-            grid = []
-            for values in list(itertools.product(*param_grid)):
-                config_dict = dict(zip(hp_names, values))
-                grid.append(config_dict)
-            
+            grid = [{}]
+            for values, hp_name in zip(param_grid, hp_names):
+                new_grid = []
+                for config in grid:
+                    if self.is_satisfied(hp_name, config):
+                        new_grid.extend({**config, hp_name: val} for val in values)
+                    else:
+                        new_grid.append(config.copy())
+                grid = new_grid
             return grid
 
         param_grid = []
         hp_names = []
 
-        for hp_name in self.cs.get_all_unconditional_hyperparameters():
+        for hp_name in self.cs.get_hyperparameter_names():
             param_grid.append(_get_param_grid(hp_name, num_steps))
             hp_names.append(hp_name)
         
         unchecked_grid = _get_cartesian_product(param_grid, hp_names)
-
         checked_grid = []
         
-        i = 0
-        while i < len(unchecked_grid):
+        for grid in unchecked_grid:
             try:
-                _ = Configuration(self.cs, unchecked_grid[i])     
-                checked_grid.append(unchecked_grid[i])           
-            
-            except ValueError:
-                values = []
-                hp_names = []
-                new_active_hp_names = []
-
-                for hp_name in unchecked_grid[i]:
-                    values.append((unchecked_grid[i][hp_name],))
-                    hp_names.append(hp_name)
-
-                    for new_hp in self.cs.get_children_of(hp_name):
-                        new_hp_name = new_hp.name
-                        if (
-                            new_hp_name not in new_active_hp_names and
-                            new_hp_name not in unchecked_grid[i]
-                        ):
-                            all_cond_ = True
-                            for cond in self.cs.get_parent_conditions_of(new_hp_name):
-                                if not cond.evaluate(unchecked_grid[i]):
-                                    all_cond_ = False
-                            if all_cond_:
-                                new_active_hp_names.append(new_hp_name)
-                
-                for hp_name in new_active_hp_names:
-                    values.append(_get_param_grid(hp_name, num_steps))
-                    hp_names.append(hp_name)
-                
-                new_grid = _get_cartesian_product(values, hp_names)
-                unchecked_grid += new_grid
-            
-            i += 1
-
+                _ = Configuration(self.cs, grid)     
+                checked_grid.append(grid)
+            except ValueError as e:
+                print(e)
+                continue
+        
         return checked_grid
