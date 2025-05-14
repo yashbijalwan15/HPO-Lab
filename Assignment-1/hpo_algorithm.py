@@ -71,6 +71,22 @@ class HPOAlgorithm:
         
         return True
 
+    def vectorize(self, config: dict) -> list:
+        values = []
+        for hp_name in self.cs.get_hyperparameter_names():
+            param = self.cs[hp_name]
+            if hp_name not in config:
+                val = -1
+            elif isinstance(param, (CategoricalHyperparameter)):
+                val = param.choices.index(config[hp_name])
+            elif isinstance(param, (OrdinalHyperparameter)):
+                val = param.sequence.index(config[hp_name])
+            else:
+                val = config[hp_name]
+            values.append(float(val))
+        
+        return values
+
     def sample(self, size: int = 1) -> list[dict] | dict:
         rng = np.random.default_rng()
         hp_names = self.cs.get_hyperparameter_names()
