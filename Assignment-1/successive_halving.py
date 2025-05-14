@@ -35,12 +35,15 @@ class SuccessiveHalving(HPOAlgorithm):
             print(f"Iteration {int(np.emath.logn(self.eta, self.curr_budget / self.min_budget) + 1)}:")
             print(f"Configs: {len(self.configs)}, Budget: {self.curr_budget}")
             
-            top_evals = np.argsort(self.evals)[: len(self.evals) // self.eta]
+            top_evals = np.argsort(self.evals)[::-1][: len(self.evals) // self.eta]
             self.configs = [self.configs[i] for i in top_evals]
             self.evals = []
             self.curr_budget *= self.eta
             self.curr_budget = min(self.curr_budget, self.max_budget)
             print(f"Configs left: {len(self.configs)}")
+
+            if len(self.configs) == 1:
+                self.curr_budget = self.max_budget
 
             self.idx = 0
         
