@@ -52,8 +52,12 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric, see
         optimiser.tell(config, result, _budget)
         
         # Increment the budget
+        config['start_time'] = curr_budget
         curr_budget += (budget_levels[-1] - budget_levels[-2]) / fidelity.lower
-        runs.append((config, result))
+        config['end_time'] = curr_budget
+
+        config[metric] = result
+        runs.append(config)
     
     if curr_budget >= budget:
         print(f"Budget Exceeded: {curr_budget:0.2f} / {budget}")
