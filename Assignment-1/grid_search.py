@@ -16,7 +16,7 @@ class GridSearch(HPOAlgorithm):
         ratio = max_budget / min_budget
         n_init = int(total_budget / ratio)
         
-        self.configs = self.grid(num_steps=2)
+        self.configs = self.grid(n_init, num_steps=2)
         print(f"Configs Run: {len(self.configs)}")
 
         self.evals = []

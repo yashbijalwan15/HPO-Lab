@@ -20,9 +20,6 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric, see
     optimiser (str): The name of the optimiser to use.
     benchmark (str): The name of the benchmark to use.
     """
-    if optimiser_class == GridSearch and scenario == 'nb301':
-        print("Skipping due to memory issues...")
-        return
 
     bench = BenchmarkSet(scenario=scenario)
     bench.set_instance(value=instance)

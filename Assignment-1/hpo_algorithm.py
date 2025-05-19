@@ -158,7 +158,7 @@ class HPOAlgorithm:
         else:
             return accepted_configurations
     
-    def grid(self, num_steps: int = 5) -> list[dict]:
+    def grid(self, n_init: int, num_steps: int = 5) -> list[dict]:
         def _get_param_grid(hp_name: str, num_steps: int = 5) -> tuple:
             param = self.cs[hp_name]
             if isinstance(param, (CategoricalHyperparameter)):
@@ -199,6 +199,9 @@ class HPOAlgorithm:
                         new_grid.extend({**config, hp_name: val} for val in values)
                     else:
                         new_grid.append(config.copy())
+
+                if len(new_grid) > n_init:
+                    new_grid = [new_grid[i] for i in rng.choice(len(new_grid), n_init, replace=False)]
                 grid = new_grid
             return grid
 
