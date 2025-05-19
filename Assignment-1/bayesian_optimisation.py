@@ -13,8 +13,9 @@ class BayesianOptimisation(HPOAlgorithm):
         total_budget: int,
         min_budget: int,
         max_budget: int,
+        seed: int = None,
     ) -> None:
-        super().__init__(cs, total_budget, min_budget, max_budget)
+        super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
         self.gp = GaussianProcessRegressor(kernel=Matern(nu=2.5))
         

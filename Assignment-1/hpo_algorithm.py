@@ -22,12 +22,14 @@ class HPOAlgorithm:
         self, cs: ConfigurationSpace,
         total_budget: int,
         min_budget: int,
-        max_budget: int
+        max_budget: int,
+        seed: int = None,
     ) -> None:
         self.cs: ConfigurationSpace = cs
         self.budget: int = total_budget
         self.min_budget: int = min_budget
         self.max_budget: int = max_budget
+        self.seed: int = seed
 
         conditions = {}
         for condition in self.cs.get_conditions():
@@ -88,14 +90,14 @@ class HPOAlgorithm:
         return values
 
     def sample(self, size: int = 1) -> list[dict] | dict:
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(seed=self.seed)
         hp_names = self.cs.get_hyperparameter_names()
         iteration = 0
         missing = size
         accepted_configurations = []
         
         while len(accepted_configurations) < size:
-            for i in range(missing):
+            for _ in range(missing):
                 unsampled_hp = set(hp_names)
                 config = {}
                 progress = True
@@ -200,6 +202,7 @@ class HPOAlgorithm:
                 grid = new_grid
             return grid
 
+        rng = np.random.default_rng(seed=self.seed)
         param_grid = []
         hp_names = []
 

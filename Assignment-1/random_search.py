@@ -9,8 +9,9 @@ class RandomSearch(HPOAlgorithm):
         total_budget: int,
         min_budget: int,
         max_budget: int,
+        seed: int = None,
     ) -> None:
-        super().__init__(cs, total_budget, min_budget, max_budget)
+        super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
         ratio = max_budget / min_budget
         n_init = int(total_budget  / ratio)

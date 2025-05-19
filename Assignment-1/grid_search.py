@@ -9,17 +9,14 @@ class GridSearch(HPOAlgorithm):
         total_budget: int,
         min_budget: int,
         max_budget: int,
+        seed: int = None,
     ) -> None:
-        super().__init__(cs, total_budget, min_budget, max_budget)
+        super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
         ratio = max_budget / min_budget
         n_init = int(total_budget / ratio)
         
         self.configs = self.grid(num_steps=2)
-        print(f"Total Configs: {len(self.configs)}")
-
-        n_init = min(n_init, len(self.configs))
-        self.configs = self.configs[:n_init]
         print(f"Configs Run: {len(self.configs)}")
 
         self.evals = []

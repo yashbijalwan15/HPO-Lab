@@ -10,15 +10,16 @@ class SuccessiveHalving(HPOAlgorithm):
         total_budget: int,
         min_budget: int,
         max_budget: int,
+        seed: int = None,
         eta: int = 2,
     ) -> None:
-        super().__init__(cs, total_budget, min_budget, max_budget)
+        super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
         self.eta = eta
         ratio = max_budget / min_budget
         n_rounds = int(np.log(ratio) / np.log(self.eta)) + 1
         # n_init = int(self.eta ** n_rounds)
-        n_init = int(total_budget * (n_rounds / 2 + ratio / 2**n_rounds)**-1)
+        n_init = int(total_budget * (n_rounds / self.eta + ratio / self.eta**n_rounds)**-1)
 
         self.configs = self.sample(n_init)
         self.evals = []

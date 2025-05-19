@@ -5,13 +5,14 @@ from grid_search import GridSearch
 from successive_halving import SuccessiveHalving
 from yahpo_gym import BenchmarkSet, local_config
 import pickle
+import time
 
 
 parent_path = Path(__file__).parent
 local_config.init_config()
 local_config.set_data_path((parent_path / "data").resolve())
 
-def run(optimiser_class, scenario, instance, fidelity_param, budget, metric):
+def run(optimiser_class, scenario, instance, fidelity_param, budget, metric, seed=None):
     """
     Run the specified optimiser on the given benchmark.
 
@@ -29,7 +30,7 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric):
     cs = bench.get_opt_space(drop_fidelity_params=True)
     fidelity = bench.get_fidelity_space()[fidelity_param]
 
-    optimiser = optimiser_class(cs=cs, total_budget=budget, min_budget=fidelity.lower, max_budget=fidelity.upper)
+    optimiser = optimiser_class(cs=cs, total_budget=budget, min_budget=fidelity.lower, max_budget=fidelity.upper, seed=seed)
 
     runs = []
     # Run the optimiser on the benchmark
@@ -47,7 +48,7 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric):
 
         # Evaluate the configuration on the benchmark
         config[fidelity_param] = _budget
-        if scenario == 'rbv2_xgboost': config['repl'] = 6 # default value
+        if scenario == 'rbv2_xgboost': config['repl'] = 10 # max value
         result = bench.objective_function(config)[0][metric]
 
         # Update the optimiser with the result
@@ -62,7 +63,7 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric):
 
     print(f"Total Runs: {len(runs)}")
     with open(
-        (parent_path / f"results/{total_budget}/{optimiser_class.__name__}_{scenario}_{instance}.pkl").resolve(), "wb"
+        (parent_path / f"results/pkl/{seed}/{optimiser_class.__name__}_{scenario}_{instance}_{total_budget}.pkl").resolve(), "wb"
     ) as f:
         pickle.dump(runs, f)
 
@@ -70,17 +71,30 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric):
 if __name__ == "__main__":
     total_budget = 10000
 
-    for scenario, instance, fidelity_param, metric in [
-        ("nb301", "cifar10", "epoch", "val_accuracy"),
-        ("rbv2_xgboost", "16", "trainsize", "acc"),
-    ]:
-        for optimiser_class in [
-            RandomSearch,
-            BayesianOptimisation,
-            GridSearch,
-            SuccessiveHalving,
+    seeds = [0, 42, 1234, 2025, 4321]
+    runtimes = []
+    for seed in seeds:
+        for scenario, instance, fidelity_param, metric in [
+            ("nb301", "cifar10", "epoch", "val_accuracy"),
+            ("rbv2_xgboost", "16", "trainsize", "acc"),
         ]:
-            print(
-                f"Running {optimiser_class.__name__} on {scenario} {instance} with {fidelity_param}"
-            )
-            run(optimiser_class, scenario, instance, fidelity_param, total_budget, metric)
+            for optimiser_class in [
+                RandomSearch,
+                BayesianOptimisation,
+                GridSearch,
+                SuccessiveHalving,
+            ]:
+                print(
+                    f"Running {optimiser_class.__name__} on {scenario} {instance} with {fidelity_param} at seed={seed}"
+                )
+                start_time = time.time()
+                run(optimiser_class, scenario, instance, fidelity_param, total_budget, metric, seed)
+
+                runtime = time.time() - start_time
+                print(f"Run time: {runtime:.5f} s")
+                runtimes.append([optimiser_class.__name__, scenario, seed, runtime])
+    
+    with open(
+        (parent_path / f"results/runtimes_{total_budget}.pkl").resolve(), "wb"
+    ) as f:
+        pickle.dump(runtimes, f)
