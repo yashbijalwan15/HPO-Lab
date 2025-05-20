@@ -30,6 +30,9 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric, see
     optimiser = optimiser_class(cs=cs, total_budget=budget, min_budget=fidelity.lower, max_budget=fidelity.upper, seed=seed)
 
     runs = []
+    best_result = 0
+    best_config = {}
+    count = 0
     # Run the optimiser on the benchmark
     curr_budget = 0
     budget_levels = [curr_budget]
@@ -42,11 +45,18 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric, see
         if config is None:
             print(f"Budget Used: {curr_budget:0.2f} / {budget}")
             break
-
+            
+        if len(budget_levels) == 2:
+            count += 1
+        
         # Evaluate the configuration on the benchmark
         config[fidelity_param] = _budget
         if scenario == 'rbv2_xgboost': config['repl'] = 10 # max value
         result = bench.objective_function(config)[0][metric]
+
+        if result > best_result:
+            best_result = result
+            best_config = config
 
         # Update the optimiser with the result
         optimiser.tell(config, result, _budget)
@@ -68,6 +78,7 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric, see
     ) as f:
         pickle.dump(runs, f)
 
+    return best_config, best_result, count
 
 if __name__ == "__main__":
     total_budget = 10000
@@ -89,13 +100,14 @@ if __name__ == "__main__":
                     f"Running {optimiser_class.__name__} on {scenario} {instance} with {fidelity_param} at seed={seed}"
                 )
                 start_time = time.time()
-                run(optimiser_class, scenario, instance, fidelity_param, total_budget, metric, seed)
+                config, result, total = run(optimiser_class, scenario, instance, fidelity_param, total_budget, metric, seed)
+                print(f"Best Result: {result:.3f}")
 
                 runtime = time.time() - start_time
                 print(f"Run time: {runtime:.5f} s")
-                runtimes.append([optimiser_class.__name__, scenario, seed, runtime])
+                runtimes.append([optimiser_class.__name__, scenario, seed, runtime, config, result, total])
     
     with open(
-        (parent_path / f"results/runtimes_{total_budget}.pkl").resolve(), "wb"
+        (parent_path / f"results/pkl/runtimes_{total_budget}.pkl").resolve(), "wb"
     ) as f:
         pickle.dump(runtimes, f)
