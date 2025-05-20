@@ -2,7 +2,6 @@ from ConfigSpace import ConfigurationSpace
 from hpo_algorithm import HPOAlgorithm
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Matern
 from scipy.stats import norm
 
 
@@ -17,7 +16,7 @@ class BayesianOptimisation(HPOAlgorithm):
     ) -> None:
         super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
-        self.gp = GaussianProcessRegressor(kernel=Matern(nu=2.5))
+        self.gp = GaussianProcessRegressor()
         
         ratio = max_budget / min_budget
         self.n_init = int(total_budget / ratio)
