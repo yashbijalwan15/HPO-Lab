@@ -3,6 +3,13 @@ from hpo_algorithm import HPOAlgorithm
 
 
 class GridSearch(HPOAlgorithm):
+    """
+    Implements the Grid Search algorithm for Hyperparameter Optimisation.
+
+    Exhaustively evaluates configurations generated from a grid over the
+    hyperparameter space.
+    """
+
     def __init__(
         self,
         cs: ConfigurationSpace,
@@ -11,6 +18,17 @@ class GridSearch(HPOAlgorithm):
         max_budget: int,
         seed: int = None,
     ) -> None:
+        """
+        Initialises the GridSearch optimizer class.
+
+        Args:
+            cs (ConfigurationSpace): The hyperparameter configuration space.
+            total_budget (int): Total evaluation budget.
+            min_budget (int): Minimum budget per evaluation.
+            max_budget (int): Maximum budget per evaluation.
+            seed (int, optional): Random seed for reproducibility. Defaults to None.
+        """
+
         super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
         ratio = max_budget / min_budget
@@ -23,11 +41,26 @@ class GridSearch(HPOAlgorithm):
         self.idx = 0
     
     def ask(self) -> tuple[dict, float]:
+        """
+        Proposes the next hyperparameter configuration and budget to evaluate.
+
+        Returns:
+            tuple[dict, float]: A tuple containing a hyperparameter configuration 
+                                and the corresponding budget.
+        """
+
         if len(self.evals) == len(self.configs):
             return (None, self.max_budget)
         
         self.idx += 1
         return (self.configs[self.idx - 1], self.max_budget)
     
-    def tell(self, config: dict, result: float, budget: int) -> None:
+    def tell(self, result: float) -> None:
+        """
+        Reports the result of evaluating a configuration.
+
+        Args:
+            result (float): The performance result.
+        """
+
         self.evals.append(result)

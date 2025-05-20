@@ -18,6 +18,10 @@ import numpy as np
 
 
 class HPOAlgorithm:
+    """
+    Base class for Hyperparameter Optimisation algorithms.
+    """
+
     def __init__(
         self, cs: ConfigurationSpace,
         total_budget: int,
@@ -25,6 +29,17 @@ class HPOAlgorithm:
         max_budget: int,
         seed: int = None,
     ) -> None:
+        """
+        Initialises the base HPO algorithm.
+
+        Args:
+            cs (ConfigurationSpace): The hyperparameter configuration space.
+            total_budget (int): Total evaluation budget.
+            min_budget (int): Minimum budget per evaluation.
+            max_budget (int): Maximum budget per evaluation.
+            seed (int, optional): Random seed for reproducibility. Defaults to None.
+        """
+
         self.cs: ConfigurationSpace = cs
         self.budget: int = total_budget
         self.min_budget: int = min_budget
@@ -38,13 +53,39 @@ class HPOAlgorithm:
 
     @abstractmethod
     def ask(self) -> tuple[dict, float]:
+        """
+        Proposes the next hyperparameter configuration and budget to evaluate.
+
+        Returns:
+            tuple[dict, float]: A tuple containing a hyperparameter configuration 
+                                and the corresponding budget.
+        """
+
         pass
     
     @abstractmethod
-    def tell(self, config: dict, result: float, budget: int) -> None:
+    def tell(self, result: float) -> None:
+        """
+        Reports the result of evaluating a configuration.
+
+        Args:
+            result (float): The performance result.
+        """
+
         pass
     
     def is_satisfied(self, hp_name: str, config: dict) -> bool:
+        """
+        Checks whether all conditional constraints for a hyperparameter are satisfied.
+
+        Args:
+            hp_name (str): The name of the hyperparameter.
+            config (dict): Partial or complete hyperparameter configuration.
+
+        Returns:
+            bool: True if all conditions are satisfied, else False.
+        """
+
         for condition in self.conditions.get(hp_name, []):
             parent_value = config.get(condition.parent.name)
 
@@ -74,6 +115,18 @@ class HPOAlgorithm:
         return True
 
     def vectorize(self, config: dict) -> list:
+        """
+        Converts a configuration dictionary to a numeric vector.
+
+        Categorical and ordinal parameters are encoded using their index values.
+
+        Args:
+            config (dict): The configuration to vectorize.
+
+        Returns:
+            list: Numeric representation of the configuration.
+        """
+
         values = []
         for hp_name in self.cs.get_hyperparameter_names():
             param = self.cs[hp_name]
@@ -90,6 +143,19 @@ class HPOAlgorithm:
         return values
 
     def sample(self, size: int = 1) -> list[dict] | dict:
+        """
+        Randomly samples valid configurations from the configuration space.
+
+        Args:
+            size (int, optional): Number of configurations to sample. Defaults to 1.
+
+        Returns:
+            dict or list[dict]: A single sampled configuration or a list of sampled configurations.
+        
+        Raises:
+            ValueError: If valid configurations cannot be sampled after many attempts.
+        """
+
         rng = np.random.default_rng(seed=self.seed)
         hp_names = self.cs.get_hyperparameter_names()
         iteration = 0
@@ -159,6 +225,20 @@ class HPOAlgorithm:
             return accepted_configurations
     
     def grid(self, n_init: int, num_steps: int = 5) -> list[dict]:
+        """
+        Generates a grid of configurations based on discretized parameter values.
+        
+        The grid is constructed using a Cartesian product of values from each
+        hyperparameter's domain.
+
+        Args:
+            n_init (int): Maximum number of configurations to return.
+            num_steps (int, optional): Number of values to sample per parameter. Defaults to 5.
+
+        Returns:
+            list[dict]: A list of valid configurations from the grid.
+        """
+
         def _get_param_grid(hp_name: str, num_steps: int = 5) -> tuple:
             param = self.cs[hp_name]
             if isinstance(param, (CategoricalHyperparameter)):

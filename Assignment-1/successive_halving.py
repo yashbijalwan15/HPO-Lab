@@ -4,6 +4,14 @@ import numpy as np
 
 
 class SuccessiveHalving(HPOAlgorithm):
+    """
+    Implements the Successive Halving algorithm for Hyperparameter Optimisation.
+
+    Evaluates a large number of configurations with a small budget, then
+    iteratively reduces the number of configurations while increasing the budget
+    for the remaining ones.
+    """
+    
     def __init__(
         self,
         cs: ConfigurationSpace,
@@ -13,6 +21,18 @@ class SuccessiveHalving(HPOAlgorithm):
         seed: int = None,
         eta: int = 2,
     ) -> None:
+        """
+        Initialises the SuccessiveHalving optimizer class.
+
+        Args:
+            cs (ConfigurationSpace): The hyperparameter configuration space.
+            total_budget (int): Total evaluation budget.
+            min_budget (int): Minimum budget per evaluation.
+            max_budget (int): Maximum budget per evaluation.
+            seed (int, optional): Random seed for reproducibility. Defaults to None.
+            eta (int, optional): Halving rate. Defaults to 2.
+        """
+
         super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
         self.eta = eta
@@ -27,6 +47,14 @@ class SuccessiveHalving(HPOAlgorithm):
         self.curr_budget = min_budget
     
     def ask(self) -> tuple[dict, float]:
+        """
+        Proposes the next hyperparameter configuration and budget to evaluate.
+
+        Returns:
+            tuple[dict, float]: A tuple containing a hyperparameter configuration 
+                                and the corresponding budget.
+        """
+
         if len(self.evals) == len(self.configs):
             if self.curr_budget == self.max_budget:
                 print(f"Iteration {int(np.ceil(np.emath.logn(self.eta, self.max_budget / self.min_budget)) + 1)}:")
@@ -51,5 +79,12 @@ class SuccessiveHalving(HPOAlgorithm):
         self.idx += 1
         return (self.configs[self.idx - 1], self.curr_budget)
 
-    def tell(self, config: dict, result: float, budget: int) -> None:
+    def tell(self, result: float) -> None:
+        """
+        Reports the result of evaluating a configuration.
+
+        Args:
+            result (float): The performance result.
+        """
+
         self.evals.append(result)

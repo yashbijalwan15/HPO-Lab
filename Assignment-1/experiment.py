@@ -14,11 +14,22 @@ local_config.set_data_path((parent_path / "data").resolve())
 
 def run(optimiser_class, scenario, instance, fidelity_param, budget, metric, seed=None):
     """
-    Run the specified optimiser on the given benchmark.
+    Runs the given HPO algorithm on a YAHPO benchmark scenario.
 
-    Parameters:
-    optimiser (str): The name of the optimiser to use.
-    benchmark (str): The name of the benchmark to use.
+    Args:
+        optimiser_class (class): The optimiser class to instantiate.
+        scenario (str): The YAHPO Gym benchmark scenario name.
+        instance (str): The specific instance of the scenario to optimize.
+        fidelity_param (str): The fidelity parameter to control budget.
+        budget (int): Total evaluation budget.
+        metric (str): The target metric to optimise.
+        seed (int, optional): Random seed for reproducibility. Defaults to None.
+
+    Returns:
+        tuple: A tuple containing:
+            - best_config (dict): The configuration with the best metric observed.
+            - best_result (float): The best metric value achieved.
+            - count (int): The number of top-level configurations evaluated.
     """
 
     bench = BenchmarkSet(scenario=scenario)
@@ -59,7 +70,7 @@ def run(optimiser_class, scenario, instance, fidelity_param, budget, metric, see
             best_config = config
 
         # Update the optimiser with the result
-        optimiser.tell(config, result, _budget)
+        optimiser.tell(result)
         
         # Increment the budget
         config['start_time'] = curr_budget
