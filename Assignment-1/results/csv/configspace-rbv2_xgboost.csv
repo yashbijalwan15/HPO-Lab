@@ -1,0 +1,17 @@
+,index,name,type,log,lower,upper,default,distribution,ordered,item_0,item_1,item_2
+0,0,alpha,float,1.0,0.0009118819655540001,1096.6331584284585,1.0,uniform,,,,
+1,1,booster,categorical,,,,gblinear,nan,0.0,gblinear,gbtree,dart
+2,2,lambda,float,1.0,0.0009118819655540001,1096.6331584284585,1.0,uniform,,,,
+3,3,nrounds,integer,1.0,7.0,2981.0,144,uniform,,,,
+4,4,num.impute.selected.cpo,categorical,,,,impute.mean,nan,0.0,impute.mean,impute.median,impute.hist
+5,5,repl,integer,0.0,1.0,10.0,6,uniform,,,,
+6,6,subsample,float,0.0,0.1,1.0,0.55,uniform,,,,
+7,8,trainsize,float,0.0,0.03,1.0,0.525,uniform,,,,
+8,9,colsample_bylevel,float,0.0,0.01,1.0,0.505,uniform,,,,
+9,10,colsample_bytree,float,0.0,0.01,1.0,0.505,uniform,,,,
+10,11,eta,float,1.0,0.0009118819655540001,1.0,0.0301973834,uniform,,,,
+11,12,gamma,float,1.0,4.539992976248486e-05,7.38905609893065,0.0183156389,uniform,,,,
+12,13,max_depth,integer,0.0,1.0,15.0,8,uniform,,,,
+13,14,min_child_weight,float,1.0,2.718281828459045,148.4131591025766,20.0855369232,uniform,,,,
+14,15,rate_drop,float,0.0,0.0,1.0,0.5,uniform,,,,
+15,16,skip_drop,float,0.0,0.0,1.0,0.5,uniform,,,,
