@@ -34,15 +34,19 @@ class BayesianOptimisation(HPOAlgorithm):
 
         super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
+        # Gaussian Process surrogate model
         self.gp = GaussianProcessRegressor()
         
+        # Calculate total no. of configs to evaluate
         ratio = max_budget / min_budget
         self.n_init = int(total_budget / ratio)
+
+        # Initialise with 5 random configurations
         self.configs = self.sample(5)
         self.evals = []
         self.idx = 0
 
-        self.f_max = None
+        self.f_max = None # current best result
     
     def _transform_configs(self, configs: list[dict]):
         """
@@ -86,28 +90,36 @@ class BayesianOptimisation(HPOAlgorithm):
                                 and the corresponding budget.
         """
 
+        # If all configs have been evaluated, return None
         if self.idx >= self.n_init:
             return None, self.max_budget
         
+        # If all configs evaluated so far, train GP and choose next config using EI
         if len(self.evals) == len(self.configs):
             X = self._transform_configs(self.configs)
             X = np.nan_to_num(X, nan=-1)
             y = np.array(self.evals)
 
+            # Train GP on past configs
             self.gp.fit(X, y)
 
+            # Generate candidate configurations
             candidates = self.sample(100)
             X_candidates = self._transform_configs(candidates)
             X_candidates = np.nan_to_num(X_candidates, nan=-1)
 
+            # Predict mean and std from GP
             mu, sigma = self.gp.predict(X_candidates, return_std=True)
-            self.f_max = max(self.evals)
+            self.f_max = max(self.evals) # Update best-so-far
 
+            # Compute EI and select best candidate
             acq_values = self._ei(mu, sigma)
-
             best_idx = np.argmax(acq_values)
+
+            # Append best candidate to config list
             self.configs.append(candidates[best_idx])
         
+        # Return next config and budget for evaluation
         self.idx += 1
         return self.configs[self.idx - 1].copy(), self.max_budget
     

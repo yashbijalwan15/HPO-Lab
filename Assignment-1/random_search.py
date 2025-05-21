@@ -30,8 +30,11 @@ class RandomSearch(HPOAlgorithm):
 
         super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
+        # Calculate total no. of configs to evaluate
         ratio = max_budget / min_budget
         n_init = int(total_budget  / ratio)
+        
+        # Randomly sample n_init configurations from the configspace
         self.configs = self.sample(n_init)
         self.evals = []
         self.idx = 0
@@ -45,10 +48,12 @@ class RandomSearch(HPOAlgorithm):
                                 and the corresponding budget.
         """
 
+        # If all configs have been evaluated, return None
         if len(self.evals) == len(self.configs):
             print(f"Configs Run: {len(self.configs)}")
             return (None, self.max_budget)
         
+        # Return next config and budget for evaluation
         self.idx += 1
         return (self.configs[self.idx - 1], self.max_budget)
     

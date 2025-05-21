@@ -31,9 +31,11 @@ class GridSearch(HPOAlgorithm):
 
         super().__init__(cs, total_budget, min_budget, max_budget, seed)
         
+        # Calculate total no. of configs to evaluate
         ratio = max_budget / min_budget
         n_init = int(total_budget / ratio)
         
+        # Generate grid of n_init configurations
         self.configs = self.grid(n_init, num_steps=2)
         print(f"Configs Run: {len(self.configs)}")
 
@@ -49,9 +51,11 @@ class GridSearch(HPOAlgorithm):
                                 and the corresponding budget.
         """
 
+        # If all configs have been evaluated, return None
         if len(self.evals) == len(self.configs):
             return (None, self.max_budget)
         
+        # Return next config and budget for evaluation
         self.idx += 1
         return (self.configs[self.idx - 1], self.max_budget)
     

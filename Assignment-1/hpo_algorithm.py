@@ -46,6 +46,7 @@ class HPOAlgorithm:
         self.max_budget: int = max_budget
         self.seed: int = seed
 
+        # Preprocess conditions for faster checking later
         conditions = {}
         for condition in self.cs.get_conditions():
             conditions.setdefault(condition.child.name, []).append(condition)
@@ -89,6 +90,7 @@ class HPOAlgorithm:
         for condition in self.conditions.get(hp_name, []):
             parent_value = config.get(condition.parent.name)
 
+            # Check for each type of condition
             if isinstance(condition, EqualsCondition):
                 if parent_value != condition.value:
                     return False
@@ -107,6 +109,7 @@ class HPOAlgorithm:
             
             else:
                 try:
+                    # Evaluate any other conditions
                     if not condition.evaluate(config):
                         return False
                 except:
@@ -131,14 +134,14 @@ class HPOAlgorithm:
         for hp_name in self.cs.get_hyperparameter_names():
             param = self.cs[hp_name]
             if hp_name not in config:
-                val = -1
+                val = -1 # Placeholder for missing value
             elif isinstance(param, (CategoricalHyperparameter)):
                 val = param.choices.index(config[hp_name])
             elif isinstance(param, (OrdinalHyperparameter)):
                 val = param.sequence.index(config[hp_name])
             else:
                 val = config[hp_name]
-            values.append(float(val))
+            values.append(float(val)) # Convert to float for consistency
         
         return values
 
@@ -167,13 +170,17 @@ class HPOAlgorithm:
                 unsampled_hp = set(hp_names)
                 config = {}
                 progress = True
+                
                 while unsampled_hp and progress:
                     for hp_name in list(unsampled_hp):
                         progress = False
                         param = self.cs[hp_name]
+                        
+                        # Skip if condition not satisfied
                         if not self.is_satisfied(hp_name, config):
                             continue
                         
+                        # Sample a value based on parameter type
                         if isinstance(param, (CategoricalHyperparameter)):
                             value = rng.choice(param.choices)
                         
@@ -204,6 +211,7 @@ class HPOAlgorithm:
                         unsampled_hp.remove(hp_name)
                         progress = True
                 
+                # Try to validate and store configuration dictionary
                 try:
                     _ = Configuration(self.cs, config)
                     if config not in accepted_configurations:
@@ -240,6 +248,7 @@ class HPOAlgorithm:
         """
 
         def _get_param_grid(hp_name: str, num_steps: int = 5) -> tuple:
+            # Generate grid points for one parameter
             param = self.cs[hp_name]
             if isinstance(param, (CategoricalHyperparameter)):
                 return tuple(param.choices)
@@ -271,6 +280,7 @@ class HPOAlgorithm:
             raise TypeError(f"Unknown hyperparameter type {type(param)}")
         
         def _get_cartesian_product(param_grid: list[tuple], hp_names: list[str]) -> list[dict]:
+            # Build Cartesian product with filtering based on conditions
             grid = [{}]
             for values, hp_name in zip(param_grid, hp_names):
                 new_grid = []
@@ -280,6 +290,7 @@ class HPOAlgorithm:
                     else:
                         new_grid.append(config.copy())
 
+                # Limit size if it exceeds n_init
                 if len(new_grid) > n_init:
                     new_grid = [new_grid[i] for i in rng.choice(len(new_grid), n_init, replace=False)]
                 grid = new_grid
@@ -289,13 +300,16 @@ class HPOAlgorithm:
         param_grid = []
         hp_names = []
 
+        # Generate parameter value grids
         for hp_name in self.cs.get_hyperparameter_names():
             param_grid.append(_get_param_grid(hp_name, num_steps))
             hp_names.append(hp_name)
         
+        # Build candidate configurations from the grid
         unchecked_grid = _get_cartesian_product(param_grid, hp_names)
         checked_grid = []
         
+        # Try to validate and store configuration dictionary
         for grid in unchecked_grid:
             try:
                 _ = Configuration(self.cs, grid)     
